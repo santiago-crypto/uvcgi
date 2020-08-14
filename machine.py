@@ -1,23 +1,25 @@
 import uvc as uv
-import numpy as np
+import uvcml 
 import math
-
-xend=30
-yend=30
-zend=85
-
+#parametros de la lampara
 radio=1.21
 long_lamp=81.5
 intensidad_sup=117
 
+#parametros de la caja
+xend=30
+yend=30
+zend=85
 
+#Posición de la lampara
 lampx1=0
-lampy1=0
+lampy1=27
 lampz1=0
 
 lampx2=0
-lampy2=0
+lampy2=27
 lampz2=81
+
 
 x2=lampx2-lampx1
 y2=lampy2-lampy1
@@ -25,9 +27,9 @@ z2=lampz2-lampz1
 p2=x2*x2+y2*y2+z2*z2
 
 
+data=[]
 
-
-def tiempito(valores,coord):
+def tiemp(valores,coord):
 	"""
 
    Analisis de los tiempos necesarios para matar al virus
@@ -50,18 +52,14 @@ def tiempito(valores,coord):
 	kv=0.0005522 #Inagaki 2020 
 #La intensidad se encuentra en microW/cm2
 #dimensionalmente el tiempo esta en segundos
-
-	t=math.log(s)/(-1*kv*uv.promedio(valores))
 	print('El promedio de intensidades: '+str(round(uv.promedio(valores))))
-	print('Computo de tiempo optimo para el promedio de Intensidades')
-	print('tiempo para D99.99= '+str(round(t,3))+' segundos')
+	t=math.log(s)/(-1*kv*uv.promedio(valores))
+
 #el valor experimental 1 J/cm2
 	exp=3*(10**6) #factor de corrección para llevarlo a microJ/cm2
 #La intensidad se encuentra en microW/cm2
 
 	t_e=exp/uv.promedio(valores)
-
-	print('tiempo para 1 J/cm2= '+str(round(t_e,3))+' segundos')
 
 
 #calculo de los tiempos teorico y experimental, para un plano especifico.
@@ -79,33 +77,24 @@ def tiempito(valores,coord):
 #a lo largo del centro de la lampara se la considerara 
 #como el valor a optimizar en tiempo
 	Imin=min(Z1)
-	print('La menor intensidad a la altura de la bandeja es: '+str(round(Imin,2))+'microW/cm2')
 
-	print('Analisis de tiempos optimos en la bandeja')
 	tmin=math.log(s)/(-1*kv*Imin)
-	print('tiempo para D99.99= '+str(round(tmin,5))+' segundos')
-
 	t_emin=exp/Imin
-	print('tiempo para 1 J/cm2= '+str(round(t_emin,3))+' segundos')
+
 	return tmin, t_emin
 
 
 
-	
 
-def Matriz3d(xend,yend,zend,lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2):
-	coord=uv.setup(xend,yend,zend)
-	dist=uv.distancias(coord,lampx1,lampy1,lampz1,p2,x2,y2,z2)                      #calcula las distancias al eje para cada coordenada
-#Calculamos una Intensidad a cada superficie
-	IS=uv.IS_calc(dist,radio,intensidad_sup)
-	distaxis=uv.distancia_axis(coord,lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2)    #calcula la distancia en el eje para cada coordenada
-	DirectField=uv.intensidad_directa(long_lamp,radio,IS,dist,distaxis)              #Calcula el campo de intensidades directa para cada coordenada
-	return DirectField, coord
-	
+for inc in range(3):
+	aaa,coorde= uvcml.Matriz3d(xend,yend,zend,lampx1+inc,lampy1,lampz1,p2,x2,y2,z2,lampx2+inc,lampy2,lampz2)
+	t1,t2=tiemp(aaa,coorde)
+	data.append([inc,uv.promedio(aaa),t1,t2])
+	print(inc)
 
+import csv 
+with open('sawers.csv', 'wb') as csvfile:
+    writer = csv.writer(csvfile, delimiter=',')
+    writer.writerows(data)
 
-
-if __name__=='__main__':
-	
-	aaa,coorde=Matriz3d(xend,yend,zend,lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2)
-	tiempito(aaa,coorde)
+print(data)

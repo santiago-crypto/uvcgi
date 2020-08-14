@@ -1,52 +1,21 @@
-#@RadionTech 
-# Calculo de rendimiento UVGI 
-#----------------------------------------------------------------------------
-''' 
-Este programa simula el funcionamiento de un sistema de esterilización basado 
-en UVC_GI, considerando el método de cálculo de radiación térmica View Factor 
-del libro Radiative Heat Transfer by Michael F. Modest
- 
-'''
 
-import math 
+
 import numpy as np
-
-#Calculo del Campo de intensidades Directos
-#tendremos las siguientes variables para cada punto:
-
-#Un vector que almacena las coordenadas i,j,k en una tupla
-
-coord=[]
-
-# x i ancho  50 cm
-# y j alto   50 cm
-# z k largo 100 cm
-#Empieza variando en el orden i,j,k - i,j,k+1 - i,j+1,k - i+1,j,k
-# El tamaño total del vector será:
-# Python empieza la indexación en 0
-#xend+1*yend+1*zend+1
-
-IS=[]
-#distancia hacia el eje de la lámpara para cada coord
-dist=[]
-#distancias a lo largo del axis de la lámpara para cada coord
-distaxis=[]
-#Vector de intensidades de la Radiación Directa
-DirectField=[]
 
 
 
 def setup(xend,yend,zend):
-#	setupv=[]
+	setupv=[]
 	for j in range(0,xend+1):
 		for i in range(0,yend+1):
 			for k in range(0,zend+1):
-				coord.append((i,j,k))
-#	return setupv
+				setupv.append((i,j,k))
+	return setupv
 
 
 
-def distancias(lampx1,lampy1,lampz1,p2,x2,y2,z2):
+def distancias(coord,lampx1,lampy1,lampz1,p2,x2,y2,z2):
+    distan=[]
     for i,j,k in coord:
         x1=i-lampx1
         y1=j-lampy1
@@ -58,9 +27,11 @@ def distancias(lampx1,lampy1,lampz1,p2,x2,y2,z2):
                 d=abs(np.sin(a))*np.sqrt(p1)
         else: 
             d = 0
-        dist.append(d)
+        distan.append(d)
+    return distan
 
-def distancia_axis(lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2):
+def distancia_axis(coord,lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2):
+    distanaxis=[]
     for i,j,k in coord:
         x1=i-lampx1
         y1=j-lampy1
@@ -84,7 +55,8 @@ def distancia_axis(lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2):
         else:
             posit2 = 0.000001
         d=max(posit1,posit2)
-        distaxis.append(d)
+        distanaxis.append(d)
+    return distanaxis
 
 
 
@@ -126,30 +98,31 @@ def intensBey(IS,arcl,r,x,db):
 
 
 def intensidad_directa(long_lamp,radio,IS,dist,distaxis):
-    for i in range(len(distaxis)):
-        if distaxis[i]<long_lamp:
-           tempsum=intensidad(IS[i],long_lamp,radio,dist[i],distaxis[i])
-                #entradas: IS, arcl,r,x,h
-        else:
-            db=distaxis[i]-long_lamp
-            tempsum=intensBey(IS[i],long_lamp, radio,dist[i],db)
-        DirectField.append(tempsum)
+	intendirect=[]
+	for i in range(len(distaxis)):
+		if distaxis[i]<long_lamp:
+			tempsum=intensidad(IS[i],long_lamp,radio,dist[i],distaxis[i])
+		else:
+			db=distaxis[i]-long_lamp
+			tempsum=intensBey(IS[i],long_lamp, radio,dist[i],db)
+		intendirect.append(tempsum)
+	return intendirect
 
-def promedio():
-    total=0
-    for i in DirectField:
-        total=total+i
-    prom=total/len(coord)
-    return prom
+def promedio(DirectField):
+	total=0
+	for i in DirectField:
+		total=total+i
+		prom=total/len(DirectField)
+	return prom
 
 def IS_calc(dist,radio,intensidad_sup):
-    for i in dist:
-        b=i
-        if (i<=radio):
-            b=radio+0.0001
-        IS.append(intensidad_sup*(100/b)**2)
-    
-
+	isaura=[]
+	for i in dist:
+		b=i
+		if (i<=radio):
+			b=radio+0.0001
+		isaura.append(intensidad_sup*(100/b)**2)
+	return isaura
 
 
 if __name__=='__main__':
@@ -189,13 +162,13 @@ if __name__=='__main__':
 	print("Largo en cm 'z'")
 	zend = int(input())
 	
-	setup(xend,yend,zend)                           #crea las coordenadas del sistema
-	distancias(lampx1,lampy1,lampz1,p2,x2,y2,z2,lampx2,lampy2,lampz2)                      #calcula las distancias al eje para cada coordenada
+	coord=setup(xend,yend,zend)                           #crea las coordenadas del sistema
+	dist=distancias(lampx1,lampy1,lampz1,p2,x2,y2,z2)                      #calcula las distancias al eje para cada coordenada
 #Calculamos una Intensidad a cada superficie
-	IS_calc(dist,radio,intensidad_sup)
-	distancia_axis(lampx1,lampy1,lampz1)    #calcula la distancia en el eje para cada coordenada
-	intensidad_directa(long_lamp,radio,IS,dist,distaxis)              #Calcula el campo de intensidades directa para cada coordenada
-	print('Promedio de intensidad: '+str(round(promedio())))
+	IS=IS_calc(dist,radio,intensidad_sup)
+	distaxis=distancia_axis(lampx1,lampy1,lampz1)    #calcula la distancia en el eje para cada coordenada
+	DirectField=intensidad_directa(long_lamp,radio,IS,dist,distaxis)              #Calcula el campo de intensidades directa para cada coordenada
+	print('Promedio de intensidad: '+str(round(promedio(DirectField))))
 
 #Para poder mostrar en unidades relativas, normalizamos el vector DirectField
 	DirectField1=np.divide(100*DirectField,max(DirectField))
